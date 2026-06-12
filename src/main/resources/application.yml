@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: spring-ai-rag
+
+  # --- PostgreSQL: metadane dokumentów/chunków ---
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ragdb
+    username: rag
+    password: rag
+  jpa:
+    hibernate:
+      ddl-auto: update        # tworzy/aktualizuje tabele przy starcie (wygodne na nauce)
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # --- Limity uploadu pliku (walidacja rozmiaru już na poziomie kontenera) ---
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+  ai:
+    # Wybór dostawcy modeli. Na classpath są starter-y OpenAI i Ollama,
+    # więc Spring AI musi wiedzieć, którego użyć. Domyślnie: OpenAI.
+    # Profil 'ollama' nadpisuje te wartości na 'ollama'.
+    model:
+      chat: openai
+      embedding: openai
+    # --- Domyślny model: OpenAI (chat + embeddingi) ---
+    openai:
+      api-key: ${OPENAI_API_KEY}     # ustaw zmienną środowiskową
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.2
+      embedding:
+        options:
+          model: text-embedding-3-small
+
+    # --- Główny vector store: ChromaDB ---
+    vectorstore:
+      chroma:
+        initialize-schema: true       # utwórz kolekcję, jeśli nie istnieje
+        collection-name: rag_documents
+        client:
+          host: http://localhost
+          port: 8000
+
+# Limity przyjmowanego pliku PDF (walidacja w serwisie)
+app:
+  upload:
+    max-file-size-bytes: 20971520     # 20 MB
+    allowed-content-type: application/pdf
+  rag:
+    top-k: 4                          # ile chunków pobieramy do kontekstu
+    similarity-threshold: 0.0         # 0 = bez progu (Chroma zwraca top-k)
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.ai: INFO

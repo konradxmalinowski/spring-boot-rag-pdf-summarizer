@@ -1,0 +1,28 @@
+# Profil 'ollama' — łatwa zamiana modelu LLM z OpenAI na lokalną Ollamę.
+# Uruchom: SPRING_PROFILES_ACTIVE=ollama ./mvnw spring-boot:run
+#
+# Wymaga lokalnie uruchomionej Ollamy z pobranymi modelami, np.:
+#   ollama pull llama3.1
+#   ollama pull nomic-embed-text
+#
+# UWAGA: embeddingi muszą być spójne — jeśli zaindeksowałeś dokumenty na
+# OpenAI, przeindeksuj je po przełączeniu na Ollamę (POST /reindex),
+# bo wymiary i przestrzeń wektorów są inne.
+spring:
+  ai:
+    # Przełączamy dostawcę modeli na Ollamę (zamiast OpenAI z application.yml).
+    model:
+      chat: ollama
+      embedding: ollama
+    # OpenAI starter wciąż jest na classpath, ale nieaktywny — klucz nie jest używany.
+    openai:
+      api-key: not-needed
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: llama3.1
+          temperature: 0.2
+      embedding:
+        options:
+          model: nomic-embed-text

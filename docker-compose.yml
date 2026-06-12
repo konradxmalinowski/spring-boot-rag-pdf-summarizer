@@ -1,0 +1,41 @@
+# Uruchamia dwie zależności aplikacji:
+#  - PostgreSQL: przechowuje METADANE dokumentów i chunków
+#  - ChromaDB:   główny VECTOR STORE (embeddingi + similarity search)
+#
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# Reset:  docker compose down -v   (kasuje też dane w wolumenach)
+services:
+  postgres:
+    image: postgres:16
+    container_name: rag-postgres
+    environment:
+      POSTGRES_DB: ragdb
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: rag
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d ragdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  chroma:
+    image: chromadb/chroma:0.5.23
+    container_name: rag-chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/localhost/8000"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  chroma-data:
