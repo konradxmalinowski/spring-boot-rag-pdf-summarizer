@@ -1,0 +1,30 @@
+# Profil 'gemini' — używa Google Gemini przez jego endpoint zgodny z OpenAI.
+# Uruchom: SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
+#
+# Klucz pobierz z Google AI Studio (https://aistudio.google.com/apikey):
+#   export GEMINI_API_KEY=...
+#
+# Trik: Gemini wystawia API kompatybilne z OpenAI, więc nie potrzebujemy nowej
+# zależności — reużywamy startera OpenAI, zmieniając tylko base-url i ścieżki.
+# Dlatego spring.ai.model.chat/embedding pozostają 'openai' (z application.yml).
+#
+# UWAGA: embeddingi Gemini mają INNY wymiar niż OpenAI (text-embedding-004 = 768,
+# OpenAI text-embedding-3-small = 1536). Po przełączeniu modelu PRZEINDEKSUJ
+# dokumenty (POST /api/documents/{id}/reindex) — inaczej similarity search padnie
+# na niezgodności wymiarów. Sprawdź aktywny wymiar przez GET /api/documents/stats.
+spring:
+  ai:
+    openai:
+      api-key: ${GEMINI_API_KEY}
+      base-url: https://generativelanguage.googleapis.com
+      chat:
+        # pełny URL: .../v1beta/openai/chat/completions
+        completions-path: /v1beta/openai/chat/completions
+        options:
+          model: gemini-2.0-flash
+          temperature: 0.2
+      embedding:
+        # pełny URL: .../v1beta/openai/embeddings
+        embeddings-path: /v1beta/openai/embeddings
+        options:
+          model: text-embedding-004

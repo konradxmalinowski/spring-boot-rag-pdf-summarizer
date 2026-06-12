@@ -80,8 +80,11 @@ export OPENAI_API_KEY=sk-...
 Aplikacja wstaje na `http://localhost:8080`. Tabele w Postgresie tworzą się
 automatycznie (`ddl-auto: update`).
 
-### 5. (Opcjonalnie) Tryb Ollama zamiast OpenAI
+### 5. (Opcjonalnie) Zamiana modelu LLM
 
+Domyślnie używany jest **OpenAI**. Dostępne są dwa dodatkowe profile:
+
+**Ollama (lokalnie):**
 ```bash
 # wymaga lokalnej Ollamy z modelami:
 ollama pull llama3.1
@@ -90,9 +93,20 @@ ollama pull nomic-embed-text
 SPRING_PROFILES_ACTIVE=ollama ./mvnw spring-boot:run
 ```
 
-> Po zmianie modelu embeddingów **przeindeksuj** dokumenty (`POST .../reindex`),
-> bo OpenAI i Ollama mają różne przestrzenie wektorów. Sprawdź aktywny wymiar
-> przez `GET /api/documents/stats`.
+**Gemini (Google AI Studio):**
+```bash
+# klucz z https://aistudio.google.com/apikey
+export GEMINI_API_KEY=...
+
+SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
+```
+> Gemini działa przez endpoint zgodny z OpenAI — nie ma dodatkowej zależności,
+> profil tylko przekierowuje startera OpenAI (chat: `gemini-2.0-flash`,
+> embeddingi: `text-embedding-004`).
+
+> **Po zmianie modelu embeddingów przeindeksuj dokumenty** (`POST .../reindex`),
+> bo OpenAI / Ollama / Gemini mają różne przestrzenie i wymiary wektorów
+> (OpenAI 1536, Gemini 768). Sprawdź aktywny wymiar przez `GET /api/documents/stats`.
 
 ## Endpointy
 
