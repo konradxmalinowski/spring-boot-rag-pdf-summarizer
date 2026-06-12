@@ -1,0 +1,83 @@
+{
+  "info": {
+    "name": "Spring AI RAG",
+    "description": "Kolekcja requestów do RAG nad PDF (Spring AI + ChromaDB). Ustaw zmienną {{baseUrl}} (domyślnie http://localhost:8080) oraz {{documentId}} po uploadzie.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "documentId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "1. Upload PDF",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/documents/upload", "host": ["{{baseUrl}}"], "path": ["api", "documents", "upload"] },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file", "src": "/sciezka/do/dokument.pdf" }
+          ]
+        },
+        "description": "Wgranie i indeksacja PDF. Zwraca 201 z id dokumentu."
+      }
+    },
+    {
+      "name": "2. Lista dokumentów",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/documents", "host": ["{{baseUrl}}"], "path": ["api", "documents"] }
+      }
+    },
+    {
+      "name": "3. Statystyki magazynu",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/documents/stats", "host": ["{{baseUrl}}"], "path": ["api", "documents", "stats"] }
+      }
+    },
+    {
+      "name": "4. Szczegóły dokumentu",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/documents/{{documentId}}", "host": ["{{baseUrl}}"], "path": ["api", "documents", "{{documentId}}"] }
+      }
+    },
+    {
+      "name": "5. RAG - zadaj pytanie",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/chat/ask", "host": ["{{baseUrl}}"], "path": ["api", "chat", "ask"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"O czym jest dokument?\"\n}"
+        },
+        "description": "Pytanie do wszystkich dokumentów. Opcjonalnie dodaj \"documentId\": 1 aby zawęzić."
+      }
+    },
+    {
+      "name": "6. Streszczenie dokumentu",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/documents/{{documentId}}/summary", "host": ["{{baseUrl}}"], "path": ["api", "documents", "{{documentId}}", "summary"] }
+      }
+    },
+    {
+      "name": "7. Reindeksacja dokumentu",
+      "request": {
+        "method": "POST",
+        "url": { "raw": "{{baseUrl}}/api/documents/{{documentId}}/reindex", "host": ["{{baseUrl}}"], "path": ["api", "documents", "{{documentId}}", "reindex"] }
+      }
+    },
+    {
+      "name": "8. Usuń dokument",
+      "request": {
+        "method": "DELETE",
+        "url": { "raw": "{{baseUrl}}/api/documents/{{documentId}}", "host": ["{{baseUrl}}"], "path": ["api", "documents", "{{documentId}}"] }
+      }
+    }
+  ]
+}
