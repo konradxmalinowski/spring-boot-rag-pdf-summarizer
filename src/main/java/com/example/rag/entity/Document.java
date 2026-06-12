@@ -1,0 +1,141 @@
+package com.example.rag.entity;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Metadane wgranego dokumentu PDF.
+ * Sama treść/embeddingi NIE są tu trzymane — to robi ChromaDB.
+ * Tu trzymamy tylko informacje potrzebne do listowania, statusu i reindeksacji.
+ */
+@Entity
+@Table(name = "documents")
+public class Document {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String filename;
+
+    @Column(nullable = false)
+    private long fileSizeBytes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DocumentStatus status;
+
+    /** Liczba chunków zapisanych w ChromaDB dla tego dokumentu. */
+    @Column(nullable = false)
+    private int chunkCount;
+
+    /** Wypełniane gdy status = FAILED. */
+    @Column(length = 1000)
+    private String errorMessage;
+
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
+    private Instant updatedAt;
+
+    /**
+     * Surowy tekst PDF — trzymamy go, by móc streszczać i reindeksować
+     * bez konieczności ponownego uploadu pliku.
+     */
+    @Column(columnDefinition = "text")
+    private String extractedText;
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DocumentChunk> chunks = new ArrayList<>();
+
+    protected Document() {
+        // wymagane przez JPA
+    }
+
+    public Document(String filename, long fileSizeBytes) {
+        this.filename = filename;
+        this.fileSizeBytes = fileSizeBytes;
+        this.status = DocumentStatus.UPLOADED;
+        this.chunkCount = 0;
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    /** Oznacz dokument jako poprawnie zaindeksowany. */
+    public void markIndexed(int chunkCount, String extractedText) {
+        this.status = DocumentStatus.INDEXED;
+        this.chunkCount = chunkCount;
+        this.extractedText = extractedText;
+        this.errorMessage = null;
+        touch();
+    }
+
+    public void markProcessing() {
+        this.status = DocumentStatus.PROCESSING;
+        touch();
+    }
+
+    public void markFailed(String errorMessage) {
+        this.status = DocumentStatus.FAILED;
+        this.errorMessage = errorMessage;
+        touch();
+    }
+
+    private void touch() {
+        this.updatedAt = Instant.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getFilename() {
+        return filename;
+    }
+
+    public long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
+
+    public DocumentStatus getStatus() {
+        return status;
+    }
+
+    public int getChunkCount() {
+        return chunkCount;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public String getExtractedText() {
+        return extractedText;
+    }
+
+    public List<DocumentChunk> getChunks() {
+        return chunks;
+    }
+}
