@@ -41,7 +41,7 @@ public class ChromaService {
         List<Document> documents = new ArrayList<>(chunkTexts.size());
         for (int i = 0; i < chunkTexts.size(); i++) {
             Map<String, Object> metadata = new HashMap<>();
-            metadata.put(META_DOCUMENT_ID, documentId);
+            metadata.put(META_DOCUMENT_ID, String.valueOf(documentId));
             metadata.put(META_FILENAME, filename);
             metadata.put(META_CHUNK_INDEX, i);
             documents.add(new Document(chunkTexts.get(i), metadata));
@@ -63,7 +63,7 @@ public class ChromaService {
                 .query(query)
                 .topK(topK);
         if (documentId != null) {
-            request.filterExpression(META_DOCUMENT_ID + " == " + documentId);
+            request.filterExpression(META_DOCUMENT_ID + " == '" + documentId + "'");
         }
         try {
             List<Document> results = vectorStore.similaritySearch(request.build());
