@@ -1,33 +1,48 @@
-# Spring AI RAG — pytania i streszczenia PDF
+# Spring AI RAG — PDF Q&A and Summarization
 
-Aplikacja REST w Spring Boot 3 + Spring AI, która pozwala:
+A Spring Boot 3 + Spring AI REST application that lets you:
 
-- wgrać dokument **PDF**,
-- zadawać do niego pytania w architekturze **RAG** (Retrieval-Augmented Generation),
-- generować **streszczenia** (krótkie, szczegółowe, punkty kluczowe).
+- upload a **PDF** document,
+- ask questions about it using **RAG** (Retrieval-Augmented Generation),
+- generate **summaries** (short, detailed, key points).
 
-Główny magazyn wiedzy to **ChromaDB** (embeddingi + similarity search).
-**PostgreSQL** trzyma metadane dokumentów i chunków. Domyślny model to **OpenAI**,
-z łatwą zamianą na **Ollama** (profil Springa).
+**ChromaDB** is the vector store (embeddings + similarity search).
+**PostgreSQL** stores document and chunk metadata. The default LLM is **OpenAI**,
+with drop-in support for **Ollama** and **Gemini** via Spring profiles.
 
-> **Uwaga o wersji Javy:** specyfikacja wymagała Java 21, ale projekt celuje w
-> **Java 17** (jedyny JDK na maszynie deweloperskiej). Spring Boot 3 i Spring AI 1.0
-> w pełni działają na Javie 17 — funkcjonalnie nie ma różnicy. Aby przejść na 21,
-> zmień `<java.version>` w `pom.xml`.
+> **Java version note:** the original spec required Java 21, but the project targets
+> **Java 17** (the only JDK available on the dev machine). Spring Boot 3 and Spring AI 1.0
+> work fully on Java 17 — no functional difference. To switch to 21, change
+> `<java.version>` in `pom.xml`.
 
 ## Stack
 
-| Warstwa        | Technologia                          |
-|----------------|--------------------------------------|
-| Język          | Java 17                              |
-| Framework      | Spring Boot 3.4.5                     |
-| AI             | Spring AI 1.0.0 (OpenAI / Ollama)    |
-| Vector store   | ChromaDB                             |
-| Metadane       | PostgreSQL 16 + Spring Data JPA      |
-| Odczyt PDF     | spring-ai-pdf-document-reader (PDFBox)|
-| Build          | Maven (wrapper `./mvnw`)             |
+| Layer        | Technology                              |
+|--------------|-----------------------------------------|
+| Language     | Java 17                                 |
+| Framework    | Spring Boot 3.4.5                       |
+| AI           | Spring AI 1.0.0 (OpenAI / Ollama / Gemini) |
+| Vector store | ChromaDB                                |
+| Metadata DB  | PostgreSQL 16 + Spring Data JPA         |
+| PDF parsing  | spring-ai-pdf-document-reader (PDFBox)  |
+| Build        | Maven (wrapper `./mvnw`)                |
 
-## Architektura (warstwy)
+## What was fixed
+
+1. **ChromaDB filter type mismatch** — `documentId` now stored/filtered as String; per-document RAG search was always returning 0 results.
+2. **`uploadAndIndex()` is `@Transactional`** — prevents PostgreSQL/ChromaDB split-brain on crash.
+3. **`SUMMARY_SYSTEM` prompt demands JSON unconditionally** — fixes 502 errors on non-English documents.
+4. **Ollama starter marked `<optional>`** — prevents `NoUniqueBeanDefinitionException` when running the Gemini profile.
+5. **`Document` entity has `@PrePersist`/`@PreUpdate` callbacks** — robust `createdAt`/`updatedAt` handling.
+6. **Uploaded filenames sanitised with `Paths.getFileName()`** — prevents path traversal.
+7. **`TokenTextSplitter` instantiated per-call** — eliminates shared mutable state under concurrent uploads.
+8. **`RagService` null-checks `chatClient.content()`** — model safety filter can return null.
+9. **`EmbeddingService.dimensions()` result cached** — avoids a live API call on every `/stats` request.
+10. **DB password read from `DB_PASSWORD` env var** with fallback default `rag`.
+11. **`POSTGRES_PASSWORD` in docker-compose reads from env var** with fallback `rag`.
+12. **Summary prompt signals truncation** to the model when text exceeds 24,000 chars.
+
+## Architecture
 
 ```
 controller  → service → { repository (JPA) | vectorstore (Chroma) | embedding | rag }
@@ -35,58 +50,57 @@ controller  → service → { repository (JPA) | vectorstore (Chroma) | embeddin
                entity / dto / config / exception
 ```
 
-- **controller** — `DocumentController`, `ChatController` (REST, statusy HTTP)
-- **service** — `DocumentService` (orkiestracja), `PdfProcessingService`,
+- **controller** — `DocumentController`, `ChatController` (REST, HTTP status codes)
+- **service** — `DocumentService` (orchestration), `PdfProcessingService`,
   `RagService`, `SummaryService`
-- **vectorstore** — `ChromaService` (jedyny punkt kontaktu z ChromaDB)
-- **embedding** — `EmbeddingService` (info o modelu embeddingów)
-- **rag** — `PromptTemplates` (szablony promptów)
-- **repository / entity** — `Document`, `DocumentChunk` + repozytoria JPA
-- **dto** — request/response (rekordy) + `ApiError`
+- **vectorstore** — `ChromaService` (single point of contact with ChromaDB)
+- **embedding** — `EmbeddingService` (embedding model metadata)
+- **rag** — `PromptTemplates` (prompt templates)
+- **repository / entity** — `Document`, `DocumentChunk` + JPA repositories
+- **dto** — request/response records + `ApiError`
 - **config** — `ChatClientConfig`
-- **exception** — `GlobalExceptionHandler` + wyjątki domenowe
+- **exception** — `GlobalExceptionHandler` + domain exceptions
 
-Pełny diagram przepływu: [`docs/rag-flow.md`](docs/rag-flow.md).
+Full flow diagram: [`docs/rag-flow.md`](docs/rag-flow.md).
 
-## Uruchomienie
+## Running the application
 
-### 1. Wymagania
+### 1. Requirements
 
 - JDK 17
 - Docker + Docker Compose
-- Klucz OpenAI API (dla domyślnego profilu)
+- OpenAI API key (for the default profile)
 
-### 2. Wystartuj zależności (PostgreSQL + ChromaDB)
+### 2. Start dependencies (PostgreSQL + ChromaDB)
 
 ```bash
 docker compose up -d
 ```
 
-- PostgreSQL: `localhost:5432` (db `ragdb`, user/hasło `rag`/`rag`)
+- PostgreSQL: `localhost:5432` (db `ragdb`, user `rag`, password `rag` — override with `DB_PASSWORD` env var)
 - ChromaDB: `localhost:8000`
 
-### 3. Ustaw klucz OpenAI
+### 3. Set the OpenAI API key
 
 ```bash
 export OPENAI_API_KEY=sk-...
 ```
 
-### 4. Uruchom aplikację
+### 4. Start the application
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-Aplikacja wstaje na `http://localhost:8080`. Tabele w Postgresie tworzą się
-automatycznie (`ddl-auto: update`).
+The app starts at `http://localhost:8080`. PostgreSQL tables are created automatically (`ddl-auto: update`).
 
-### 5. (Opcjonalnie) Zamiana modelu LLM
+### 5. (Optional) Switch the LLM
 
-Domyślnie używany jest **OpenAI**. Dostępne są dwa dodatkowe profile:
+The default profile uses **OpenAI**. Two additional profiles are available:
 
-**Ollama (lokalnie):**
+**Ollama (local):**
 ```bash
-# wymaga lokalnej Ollamy z modelami:
+# requires a running Ollama instance with these models:
 ollama pull llama3.1
 ollama pull nomic-embed-text
 
@@ -95,64 +109,65 @@ SPRING_PROFILES_ACTIVE=ollama ./mvnw spring-boot:run
 
 **Gemini (Google AI Studio):**
 ```bash
-# klucz z https://aistudio.google.com/apikey
+# get a key from https://aistudio.google.com/apikey
 export GEMINI_API_KEY=...
 
 SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
 ```
-> Gemini działa przez endpoint zgodny z OpenAI — nie ma dodatkowej zależności,
-> profil tylko przekierowuje startera OpenAI (chat: `gemini-2.0-flash`,
-> embeddingi: `text-embedding-004`).
+> Gemini works through its OpenAI-compatible endpoint — no extra dependency needed.
+> The profile redirects the OpenAI starter (chat: `gemini-2.0-flash`,
+> embeddings: `gemini-embedding-001`).
 
-> **Po zmianie modelu embeddingów przeindeksuj dokumenty** (`POST .../reindex`),
-> bo OpenAI / Ollama / Gemini mają różne przestrzenie i wymiary wektorów
-> (OpenAI 1536, Gemini 768). Sprawdź aktywny wymiar przez `GET /api/documents/stats`.
+> **After switching embedding models, reindex your documents** (`POST .../reindex`).
+> OpenAI, Ollama, and Gemini use different vector spaces and dimensions
+> (OpenAI 1536, Gemini `gemini-embedding-001` = 3072). Check the active dimension
+> with `GET /api/documents/stats`.
 
-## Endpointy
+## Endpoints
 
-| Metoda | Ścieżka                          | Opis                              | Status |
-|--------|----------------------------------|-----------------------------------|--------|
-| POST   | `/api/documents/upload`          | Upload + indeksacja PDF           | 201    |
-| GET    | `/api/documents`                 | Lista dokumentów                  | 200    |
-| GET    | `/api/documents/stats`           | Liczba dokumentów/chunków         | 200    |
-| GET    | `/api/documents/{id}`            | Szczegóły dokumentu               | 200    |
-| POST   | `/api/documents/{id}/summary`    | Streszczenie                      | 200    |
-| POST   | `/api/documents/{id}/reindex`    | Ponowna indeksacja                | 200    |
-| DELETE | `/api/documents/{id}`            | Usunięcie (z ChromaDB i bazy)     | 204    |
-| POST   | `/api/chat/ask`                  | RAG search (pytanie)              | 200    |
+| Method | Path                             | Description                        | Status |
+|--------|----------------------------------|------------------------------------|--------|
+| POST   | `/api/documents/upload`          | Upload + index a PDF               | 201    |
+| GET    | `/api/documents`                 | List all documents                 | 200    |
+| GET    | `/api/documents/stats`           | Document and chunk counts          | 200    |
+| GET    | `/api/documents/{id}`            | Document details                   | 200    |
+| POST   | `/api/documents/{id}/summary`    | Generate summary                   | 200    |
+| POST   | `/api/documents/{id}/reindex`    | Re-index document                  | 200    |
+| DELETE | `/api/documents/{id}`            | Delete (from ChromaDB and Postgres) | 204   |
+| POST   | `/api/chat/ask`                  | RAG search (question answering)    | 200    |
 
-### Przykładowe requesty (curl)
+### Example requests (curl)
 
 ```bash
 # Upload
-curl -F "file=@dokument.pdf" http://localhost:8080/api/documents/upload
+curl -F "file=@document.pdf" http://localhost:8080/api/documents/upload
 
-# Pytanie (RAG)
+# Question (RAG, all documents)
 curl -X POST http://localhost:8080/api/chat/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "O czym jest dokument?"}'
+  -d '{"question": "What is this document about?"}'
 
-# Pytanie zawężone do jednego dokumentu
+# Question scoped to one document
 curl -X POST http://localhost:8080/api/chat/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "Jakie są wnioski?", "documentId": 1}'
+  -d '{"question": "What are the conclusions?", "documentId": 1}'
 
-# Streszczenie
+# Summary
 curl -X POST http://localhost:8080/api/documents/1/summary
 
-# Lista, statystyki, usunięcie
+# List, stats, delete
 curl http://localhost:8080/api/documents
 curl http://localhost:8080/api/documents/stats
 curl -X DELETE http://localhost:8080/api/documents/1
 ```
 
-### Przykładowe odpowiedzi
+### Example responses
 
 `POST /api/chat/ask`:
 ```json
 {
-  "answer": "Dokument opisuje architekturę RAG i jej zastosowania.",
-  "sources": ["fragment 1...", "fragment 2..."]
+  "answer": "The document describes the RAG architecture and its applications.",
+  "sources": ["chunk 1...", "chunk 2..."]
 }
 ```
 
@@ -165,45 +180,46 @@ curl -X DELETE http://localhost:8080/api/documents/1
 }
 ```
 
-Błąd (jednolity format):
+Error (uniform format):
 ```json
 {
   "timestamp": "2026-06-12T16:00:00Z",
   "status": 400,
   "error": "Bad Request",
-  "message": "Błąd walidacji",
-  "details": ["question: Pole 'question' jest wymagane i nie może być puste"]
+  "message": "Validation error",
+  "details": ["question: Field 'question' is required and must not be blank"]
 }
 ```
 
-## Walidacja i bezpieczeństwo
+## Validation and security
 
-- typ pliku (MIME `application/pdf` lub rozszerzenie `.pdf`),
-- rozmiar pliku (limit w `application.yml` + limit multipart),
-- ochrona przed pustym plikiem,
-- walidacja body (`@Valid`, `@NotBlank`),
-- obsługa błędów AI/vector store (`AiServiceException` → 502),
-- obsługa błędów PDF (`PdfProcessingException` → 422),
-- centralny `GlobalExceptionHandler` z poprawnymi statusami HTTP.
+- file type check (MIME `application/pdf` or `.pdf` extension),
+- file size limit (configured in `application.yml` + multipart limit),
+- empty-file guard,
+- request body validation (`@Valid`, `@NotBlank`),
+- uploaded filename sanitised with `Paths.getFileName()` (path traversal prevention),
+- AI/vector store error handling (`AiServiceException` → 502),
+- PDF processing error handling (`PdfProcessingException` → 422),
+- central `GlobalExceptionHandler` with correct HTTP status codes.
 
-## Testy
+## Tests
 
 ```bash
 ./mvnw test
 ```
 
-- **jednostkowe** (Mockito): `RagServiceTest`, `DocumentServiceTest`, `SummaryServiceTest`
-- **integracyjne REST** (`@WebMvcTest` + MockMvc): `RestApiIntegrationTest`
+- **unit tests** (Mockito): `RagServiceTest`, `DocumentServiceTest`, `SummaryServiceTest`
+- **REST integration tests** (`@WebMvcTest` + MockMvc): `RestApiIntegrationTest`
 
-Testy nie wymagają DB/AI/Chromy — zależności zewnętrzne są zamockowane.
+Tests do not require a running DB, AI provider, or ChromaDB — all external dependencies are mocked.
 
 ## Postman
 
-Zaimportuj [`postman/rag-collection.json`](postman/rag-collection.json).
-Ustaw zmienną `documentId` po pierwszym uploadzie.
+Import [`postman/rag-collection.json`](postman/rag-collection.json).
+Set the `documentId` variable after the first upload.
 
-## Reset danych
+## Resetting data
 
 ```bash
-docker compose down -v   # kasuje wolumeny Postgresa i Chromy
+docker compose down -v   # removes PostgreSQL and ChromaDB volumes
 ```
