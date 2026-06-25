@@ -10,11 +10,6 @@ A Spring Boot 3 + Spring AI REST application that lets you:
 **PostgreSQL** stores document and chunk metadata. The default LLM is **OpenAI**,
 with drop-in support for **Ollama** and **Gemini** via Spring profiles.
 
-> **Java version note:** the original spec required Java 21, but the project targets
-> **Java 17** (the only JDK available on the dev machine). Spring Boot 3 and Spring AI 1.0
-> work fully on Java 17 — no functional difference. To switch to 21, change
-> `<java.version>` in `pom.xml`.
-
 ## Stack
 
 | Layer        | Technology                              |
@@ -26,21 +21,6 @@ with drop-in support for **Ollama** and **Gemini** via Spring profiles.
 | Metadata DB  | PostgreSQL 16 + Spring Data JPA         |
 | PDF parsing  | spring-ai-pdf-document-reader (PDFBox)  |
 | Build        | Maven (wrapper `./mvnw`)                |
-
-## What was fixed
-
-1. **ChromaDB filter type mismatch** — `documentId` now stored/filtered as String; per-document RAG search was always returning 0 results.
-2. **`uploadAndIndex()` is `@Transactional`** — prevents PostgreSQL/ChromaDB split-brain on crash.
-3. **`SUMMARY_SYSTEM` prompt demands JSON unconditionally** — fixes 502 errors on non-English documents.
-4. **Ollama starter marked `<optional>`** — prevents `NoUniqueBeanDefinitionException` when running the Gemini profile.
-5. **`Document` entity has `@PrePersist`/`@PreUpdate` callbacks** — robust `createdAt`/`updatedAt` handling.
-6. **Uploaded filenames sanitised with `Paths.getFileName()`** — prevents path traversal.
-7. **`TokenTextSplitter` instantiated per-call** — eliminates shared mutable state under concurrent uploads.
-8. **`RagService` null-checks `chatClient.content()`** — model safety filter can return null.
-9. **`EmbeddingService.dimensions()` result cached** — avoids a live API call on every `/stats` request.
-10. **DB password read from `DB_PASSWORD` env var** with fallback default `rag`.
-11. **`POSTGRES_PASSWORD` in docker-compose reads from env var** with fallback `rag`.
-12. **Summary prompt signals truncation** to the model when text exceeds 24,000 chars.
 
 ## Architecture
 
