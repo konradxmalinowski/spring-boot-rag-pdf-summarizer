@@ -1,40 +1,45 @@
-# Diagram przepływu RAG
+# RAG Flow Diagram
 
-## Indeksacja (upload → ChromaDB)
+## Indexing (upload → ChromaDB)
 
 ```
-  Klient
+  Client
     │  POST /api/documents/upload  (multipart: file=*.pdf)
     ▼
 ┌─────────────────────┐
-│ DocumentController   │  walidacja na wejściu (typ/rozmiar/pusty)
+│ DocumentController   │  input validation (type / size / empty)
 └─────────┬───────────┘
           ▼
 ┌─────────────────────┐     ┌──────────────────────┐
-│ DocumentService      │────▶│ PdfProcessingService │  PDFBox: odczyt + chunking
-│ (orkiestracja)       │     └──────────────────────┘
+│ DocumentService      │────▶│ PdfProcessingService │  PDFBox: read + chunk
+│ (orchestration)      │     └──────────────────────┘
 │                      │            │ List<String> chunks
 │                      │◀───────────┘
 │                      │     ┌──────────────────────┐
 │                      │────▶│ ChromaService        │  VectorStore.add()
-│                      │     │  → EmbeddingModel    │  liczy embeddingi
-│                      │     │  → ChromaDB          │  zapis wektorów + metadanych
+│                      │     │  → EmbeddingModel    │  computes embeddings
+│                      │     │  → ChromaDB          │  stores vectors + metadata
+│                      │     │    (documentId: String)
 │                      │     └──────────────────────┘
 │                      │            │ List<chromaId>
 │                      │◀───────────┘
 │                      │     ┌──────────────────────┐
-│                      │────▶│ PostgreSQL (JPA)     │  metadane Document + Chunk
+│                      │────▶│ PostgreSQL (JPA)     │  Document + DocumentChunk metadata
 └──────────────────────┘     └──────────────────────┘
           │ 201 Created { id, filename, status: INDEXED, chunkCount }
           ▼
-        Klient
+        Client
 ```
 
-## Pytanie (RAG search)
+Key detail: `documentId` is written to ChromaDB metadata as a **String** (`String.valueOf(documentId)`).
+This matches the filter expression used at search time (`documentId == '<id>'`), avoiding a type mismatch
+in the Spring AI filter parser that would cause per-document searches to return zero results.
+
+## Question answering (RAG search)
 
 ```
-  Klient
-    │  POST /api/chat/ask   { "question": "O czym jest dokument?" }
+  Client
+    │  POST /api/chat/ask   { "question": "What is this document about?", "documentId": "1" }
     ▼
 ┌─────────────────────┐
 │ ChatController       │  @Valid (question NotBlank)
@@ -43,36 +48,67 @@
 ┌─────────────────────┐
 │ RagService           │
 │  1. retrieve ────────┼──▶ ChromaService.search(question, topK, documentId?)
-│                      │       │  EmbeddingModel embedduje pytanie
-│                      │       │  ChromaDB zwraca topK podobnych chunków
-│  2. augment          │◀──────┘  List<Document> (fragmenty)
-│     buduje KONTEKST  │
-│  3. generate ────────┼──▶ ChatClient.prompt(system + kontekst + pytanie)
-│                      │       │  OpenAI / Ollama
-│                      │◀──────┘  odpowiedź
+│                      │       │  EmbeddingModel embeds the question
+│                      │       │  ChromaDB returns topK similar chunks
+│                      │       │  (filtered by documentId String if provided)
+│  2. augment          │◀──────┘  List<Document> (text chunks)
+│     builds CONTEXT   │
+│  3. generate ────────┼──▶ ChatClient.prompt(system + context + question)
+│                      │       │  OpenAI / Ollama / Gemini
+│                      │◀──────┘  answer text
 └─────────┬───────────┘
           │ 200 OK { answer, sources[] }
           ▼
-        Klient
+        Client
 ```
 
-## Streszczanie
+RAG parameters (configurable in `application.yml`):
+- `app.rag.top-k` — number of chunks retrieved per query (default: 4)
+- `app.rag.similarity-threshold` — minimum similarity score (default: 0.0, no threshold)
+
+## Summarization
 
 ```
   POST /api/documents/{id}/summary
     ▼
-  SummaryService → pobiera zapisany tekst z PostgreSQL (bez ponownego czytania PDF)
-                 → ChatClient.call().entity(SummaryResponse.class)  (structured output)
+  SummaryService
+    → loads stored extractedText from PostgreSQL (no PDF re-read)
+    → truncates to 24,000 characters if necessary (context window guard)
+    → ChatClient.prompt(SUMMARY_SYSTEM, SUMMARY_USER).call().entity(SummaryResponse.class)
+         └─ SUMMARY_SYSTEM demands JSON unconditionally (prevents language override)
     ▼
   200 OK { shortSummary, detailedSummary, keyPoints[] }
 ```
 
-## Dlaczego dwa magazyny (Postgres + Chroma)?
+## Re-indexing
 
-- **ChromaDB** — jedyny vector store: embeddingi i similarity search (wymóg sekcji RAG).
-- **PostgreSQL** — źródło prawdy o metadanych: lista dokumentów, status, liczba
-  chunków, ID wpisów w Chromie (`chromaId`) potrzebne do precyzyjnego usuwania
-  oraz surowy tekst do streszczeń/reindeksacji bez ponownego uploadu.
+```
+  POST /api/documents/{id}/reindex
+    ▼
+  DocumentService.reindex()
+    → loads extractedText from PostgreSQL
+    → removes existing chunks from ChromaDB (by chromaId) and PostgreSQL
+    → re-chunks the stored text with TokenTextSplitter
+    → writes new chunks to ChromaDB (new embeddings under the active model)
+    → updates DocumentChunk records in PostgreSQL
+    ▼
+  200 OK { id, filename, status: INDEXED, chunkCount }
+```
 
-Łącznikiem jest `documentId` zapisany w metadanych każdego wektora w Chromie.
+Required after switching embedding models — OpenAI, Ollama, and Gemini produce
+vectors in different spaces with different dimensions.
+
+## Why two stores (PostgreSQL + ChromaDB)?
+
+**ChromaDB** — vector store: embeddings and similarity search. Required for the RAG path.
+
+**PostgreSQL** — source of truth for metadata: document list, processing status, chunk count,
+ChromaDB entry IDs (`chromaId`) needed for precise deletion, and the raw extracted text
+required for summaries and re-indexing without re-uploading the file.
+
+The link between the two stores is `documentId` stored in the metadata of every ChromaDB vector.
+
+```
+  PostgreSQL documents.id  ──(String.valueOf)──▶  ChromaDB metadata.documentId
+  PostgreSQL document_chunks.chromaId  ◀────────  ChromaDB document UUID
 ```
