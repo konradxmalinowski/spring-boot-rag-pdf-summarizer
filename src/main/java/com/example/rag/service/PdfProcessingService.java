@@ -20,8 +20,6 @@ public class PdfProcessingService {
     public record PdfContent(String fullText, List<String> chunks) {
     }
 
-    private final TokenTextSplitter splitter = new TokenTextSplitter();
-
     /** Odczyt PDF z surowych bajtów + chunking. */
     public PdfContent process(byte[] pdfBytes) {
         List<Document> pages = readPages(pdfBytes);
@@ -41,7 +39,7 @@ public class PdfProcessingService {
 
     /** Dzieli gotowy tekst na chunki — używane też przy reindeksacji. */
     public List<String> chunk(String text) {
-        List<Document> split = splitter.split(List.of(new Document(text)));
+        List<Document> split = new TokenTextSplitter().split(List.of(new Document(text)));
         return split.stream().map(Document::getText).toList();
     }
 
