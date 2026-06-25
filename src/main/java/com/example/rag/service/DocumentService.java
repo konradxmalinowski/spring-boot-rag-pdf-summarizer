@@ -18,11 +18,11 @@ import java.nio.file.Paths;
 import java.util.List;
 
 /**
- * Orkiestruje cykl życia dokumentu: upload -> przetworzenie -> indeksacja,
- * a także listowanie, usuwanie, reindeksację i statystyki.
+ * Orchestrates the document lifecycle: upload -> processing -> indexing,
+ * as well as listing, deletion, re-indexing, and statistics.
  *
- * Trzyma dwie spójne reprezentacje: metadane w PostgreSQL (ten serwis)
- * oraz chunki + embeddingi w ChromaDB (przez ChromaService).
+ * Maintains two consistent representations: metadata in PostgreSQL (this service)
+ * and chunks + embeddings in ChromaDB (via ChromaService).
  */
 @Service
 public class DocumentService {
@@ -52,7 +52,6 @@ public class DocumentService {
         this.allowedContentType = allowedContentType;
     }
 
-    /** Upload + pełna indeksacja PDF-a. */
     @Transactional
     public Document uploadAndIndex(MultipartFile file) {
         validate(file);
@@ -74,7 +73,7 @@ public class DocumentService {
         return document;
     }
 
-    /** Ponowna indeksacja z zapisanego tekstu (bez ponownego uploadu pliku). */
+    /** Re-indexes from stored extracted text (no file re-upload required). */
     @Transactional
     public Document reindex(Long documentId) {
         Document document = documentRepository.findById(documentId)
@@ -83,13 +82,11 @@ public class DocumentService {
         String text = document.getExtractedText();
         if (text == null || text.isBlank()) {
             throw new InvalidFileException(
-                    "Dokument nie ma zapisanej treści — wgraj plik ponownie");
+                    "Document has no stored text — please re-upload the file");
         }
 
-        // Usuń stare chunki z Chromy i z bazy.
         removeChunksFromStores(document);
 
-        // Przelicz i zapisz na nowo.
         document.markProcessing();
         documentRepository.save(document);
         List<String> chunks = pdfProcessingService.chunk(text);
@@ -109,7 +106,7 @@ public class DocumentService {
                 .orElseThrow(() -> new DocumentNotFoundException(id));
     }
 
-    /** Usuwa dokument wraz ze wszystkimi chunkami z ChromaDB i z bazy. */
+    /** Deletes the document along with all its chunks from ChromaDB and the database. */
     @Transactional
     public void deleteDocument(Long id) {
         Document document = documentRepository.findById(id)
@@ -126,7 +123,7 @@ public class DocumentService {
                 embeddingService.dimensions());
     }
 
-    // --- pomocnicze ---
+    // --- helpers ---
 
     private void index(Document document, byte[] bytes) {
         PdfProcessingService.PdfContent content = pdfProcessingService.process(bytes);
@@ -152,18 +149,18 @@ public class DocumentService {
 
     private void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new InvalidFileException("Plik jest pusty");
+            throw new InvalidFileException("File is empty");
         }
         if (file.getSize() > maxFileSizeBytes) {
             throw new InvalidFileException(
-                    "Plik jest za duży (max " + maxFileSizeBytes + " bajtów)");
+                    "File is too large (max " + maxFileSizeBytes + " bytes)");
         }
         String contentType = file.getContentType();
         boolean pdfByType = allowedContentType.equalsIgnoreCase(contentType);
         boolean pdfByName = file.getOriginalFilename() != null
                 && file.getOriginalFilename().toLowerCase().endsWith(".pdf");
         if (!pdfByType && !pdfByName) {
-            throw new InvalidFileException("Dozwolone są wyłącznie pliki PDF");
+            throw new InvalidFileException("Only PDF files are accepted");
         }
     }
 
@@ -171,13 +168,13 @@ public class DocumentService {
         try {
             return file.getBytes();
         } catch (Exception e) {
-            throw new InvalidFileException("Nie udało się odczytać przesłanego pliku");
+            throw new InvalidFileException("Failed to read the uploaded file");
         }
     }
 
     private String truncate(String message) {
         if (message == null) {
-            return "Nieznany błąd";
+            return "Unknown error";
         }
         return message.length() > 1000 ? message.substring(0, 1000) : message;
     }

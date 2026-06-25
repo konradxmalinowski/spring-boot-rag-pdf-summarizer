@@ -1,15 +1,15 @@
 package com.example.rag.entity;
 
 /**
- * Status przetwarzania dokumentu w pipeline RAG.
+ * Processing status of a document in the RAG pipeline.
  */
 public enum DocumentStatus {
-    /** Plik zapisany, jeszcze nie zaindeksowany. */
+    /** File saved, not yet indexed. */
     UPLOADED,
-    /** Trwa odczyt PDF / chunking / embedding. */
+    /** PDF reading / chunking / embedding in progress. */
     PROCESSING,
-    /** Chunki i embeddingi są w ChromaDB — dokument gotowy do pytań. */
+    /** Chunks and embeddings are in ChromaDB — document is ready for queries. */
     INDEXED,
-    /** Przetwarzanie nie powiodło się (szczegóły w polu errorMessage). */
+    /** Processing failed (details in the errorMessage field). */
     FAILED
 }

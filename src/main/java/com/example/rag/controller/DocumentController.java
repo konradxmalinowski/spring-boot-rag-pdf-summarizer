@@ -32,14 +32,13 @@ public class DocumentController {
         this.summaryService = summaryService;
     }
 
-    /** Upload PDF + indeksacja. 201 Created. */
+    /** Upload and index a PDF. Returns 201 Created. */
     @PostMapping("/upload")
     public ResponseEntity<UploadResponse> upload(@RequestParam("file") MultipartFile file) {
         Document document = documentService.uploadAndIndex(file);
         return ResponseEntity.status(HttpStatus.CREATED).body(UploadResponse.from(document));
     }
 
-    /** Lista wszystkich zaindeksowanych dokumentów. */
     @GetMapping
     public List<DocumentResponse> list() {
         return documentService.listDocuments().stream()
@@ -47,31 +46,28 @@ public class DocumentController {
                 .toList();
     }
 
-    /** Statystyki magazynu wiedzy (literalna ścieżka — przed mapowaniem /{id}). */
+    /** Knowledge store statistics. Declared before /{id} to avoid path ambiguity. */
     @GetMapping("/stats")
     public StatsResponse stats() {
         return documentService.stats();
     }
 
-    /** Szczegóły pojedynczego dokumentu. */
     @GetMapping("/{id}")
     public DocumentResponse get(@PathVariable Long id) {
         return DocumentResponse.from(documentService.getDocument(id));
     }
 
-    /** Streszczenie dokumentu. */
     @PostMapping("/{id}/summary")
     public SummaryResponse summary(@PathVariable Long id) {
         return summaryService.summarize(id);
     }
 
-    /** Ponowna indeksacja dokumentu. */
     @PostMapping("/{id}/reindex")
     public UploadResponse reindex(@PathVariable Long id) {
         return UploadResponse.from(documentService.reindex(id));
     }
 
-    /** Usunięcie dokumentu wraz z chunkami z ChromaDB. 204 No Content. */
+    /** Deletes the document and all its chunks from ChromaDB. Returns 204 No Content. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         documentService.deleteDocument(id);

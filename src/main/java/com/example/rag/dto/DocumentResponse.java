@@ -6,7 +6,7 @@ import com.example.rag.entity.DocumentStatus;
 import java.time.Instant;
 
 /**
- * Reprezentacja dokumentu zwracana w API (bez surowego tekstu).
+ * Document representation returned by the API (raw extracted text is excluded).
  */
 public record DocumentResponse(
         Long id,

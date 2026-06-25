@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Jedyny punkt kontaktu aplikacji z ChromaDB (główny vector store).
+ * Single point of contact between the application and ChromaDB (the primary vector store).
  *
- * Korzysta ze Spring-owego {@link VectorStore}, który sam liczy embeddingi
- * (przez skonfigurowany EmbeddingModel) zarówno przy zapisie, jak i przy
- * wyszukiwaniu. Tutaj dodajemy logikę specyficzną dla naszej domeny:
- * metadane (documentId, filename, chunkIndex) oraz mapowanie wyjątków.
+ * Delegates to Spring AI's {@link VectorStore}, which computes embeddings automatically
+ * (via the configured EmbeddingModel) for both writes and searches. This class adds
+ * domain-specific logic: metadata fields (documentId, filename, chunkIndex) and
+ * exception mapping.
  */
 @Service
 public class ChromaService {
@@ -33,9 +33,9 @@ public class ChromaService {
     }
 
     /**
-     * Zapisuje chunki dokumentu do ChromaDB. Embeddingi liczone są automatycznie.
+     * Saves document chunks to ChromaDB. Embeddings are computed automatically.
      *
-     * @return lista wygenerowanych ID wpisów w Chromie (do późniejszego usunięcia)
+     * @return list of generated Chroma entry IDs (needed for later deletion)
      */
     public List<String> addChunks(Long documentId, String filename, List<String> chunkTexts) {
         List<Document> documents = new ArrayList<>(chunkTexts.size());
@@ -49,14 +49,14 @@ public class ChromaService {
         try {
             vectorStore.add(documents);
         } catch (Exception e) {
-            throw new AiServiceException("Nie udało się zapisać chunków do ChromaDB", e);
+            throw new AiServiceException("Failed to save chunks to ChromaDB", e);
         }
         return documents.stream().map(Document::getId).toList();
     }
 
     /**
-     * Similarity search. Jeśli podano documentId, zawęża wyszukiwanie do
-     * jednego dokumentu (filtr po metadanych).
+     * Similarity search. When documentId is provided, narrows the search to
+     * a single document via metadata filter.
      */
     public List<Document> search(String query, int topK, Long documentId) {
         SearchRequest.Builder request = SearchRequest.builder()
@@ -69,11 +69,11 @@ public class ChromaService {
             List<Document> results = vectorStore.similaritySearch(request.build());
             return results != null ? results : List.of();
         } catch (Exception e) {
-            throw new AiServiceException("Wyszukiwanie w ChromaDB nie powiodło się", e);
+            throw new AiServiceException("ChromaDB similarity search failed", e);
         }
     }
 
-    /** Usuwa wskazane wpisy z ChromaDB po ich ID. */
+    /** Deletes the specified entries from ChromaDB by their IDs. */
     public void deleteByIds(List<String> chromaIds) {
         if (chromaIds == null || chromaIds.isEmpty()) {
             return;
@@ -81,7 +81,7 @@ public class ChromaService {
         try {
             vectorStore.delete(chromaIds);
         } catch (Exception e) {
-            throw new AiServiceException("Nie udało się usunąć wpisów z ChromaDB", e);
+            throw new AiServiceException("Failed to delete entries from ChromaDB", e);
         }
     }
 }

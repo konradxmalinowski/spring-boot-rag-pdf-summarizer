@@ -4,7 +4,7 @@ import com.example.rag.entity.Document;
 import com.example.rag.entity.DocumentStatus;
 
 /**
- * Odpowiedź po uploadzie i zaindeksowaniu PDF-a.
+ * Response returned after a PDF has been uploaded and indexed.
  */
 public record UploadResponse(
         Long id,

@@ -1,7 +1,7 @@
 package com.example.rag.exception;
 
 /**
- * Rzucany, gdy odczyt/przetworzenie PDF-a się nie powiedzie -> 422.
+ * Thrown when reading or processing a PDF fails -> maps to 422.
  */
 public class PdfProcessingException extends RuntimeException {
 

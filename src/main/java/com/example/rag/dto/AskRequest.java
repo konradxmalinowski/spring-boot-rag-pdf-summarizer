@@ -4,13 +4,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Request do RAG search: { "question": "O czym jest dokument?" }
- * Opcjonalnie można zawęzić wyszukiwanie do jednego dokumentu (documentId).
+ * RAG search request: { "question": "What is the document about?" }
+ * Optionally narrows the search to a single document via documentId.
  */
 public record AskRequest(
 
-        @NotBlank(message = "Pole 'question' jest wymagane i nie może być puste")
-        @Size(max = 2000, message = "Pytanie może mieć maksymalnie 2000 znaków")
+        @NotBlank(message = "Field 'question' is required and must not be blank")
+        @Size(max = 2000, message = "Question must not exceed 2000 characters")
         String question,
 
         Long documentId

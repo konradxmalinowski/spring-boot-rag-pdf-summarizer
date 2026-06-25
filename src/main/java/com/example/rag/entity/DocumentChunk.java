@@ -11,9 +11,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 /**
- * Metadane pojedynczego chunku.
- * Wektor (embedding) i pełna treść mieszkają w ChromaDB — tu trzymamy
- * tylko powiązanie z dokumentem, kolejność i ID wpisu w Chromie (do usuwania).
+ * Metadata for a single chunk.
+ * The embedding vector and full text live in ChromaDB — only the document
+ * association, chunk order, and ChromaDB entry ID (needed for deletion) are stored here.
  */
 @Entity
 @Table(name = "document_chunks")
@@ -27,16 +27,16 @@ public class DocumentChunk {
     @JoinColumn(name = "document_id", nullable = false)
     private Document document;
 
-    /** ID wpisu w ChromaDB (UUID) — pozwala precyzyjnie usunąć chunk. */
+    /** ChromaDB entry ID (UUID) — used to delete a specific chunk. */
     @Column(nullable = false)
     private String chromaId;
 
-    /** Kolejność chunku w dokumencie (0, 1, 2, ...). */
+    /** Zero-based position of the chunk within the document (0, 1, 2, ...). */
     @Column(nullable = false)
     private int chunkIndex;
 
     protected DocumentChunk() {
-        // wymagane przez JPA
+        // required by JPA
     }
 
     public DocumentChunk(Document document, String chromaId, int chunkIndex) {

@@ -4,16 +4,16 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
 /**
- * Cienka warstwa nad modelem embeddingów.
+ * Thin wrapper around the embedding model.
  *
- * Uwaga architektoniczna: w Spring AI to {@code VectorStore} (tutaj ChromaDB)
- * wywołuje {@link EmbeddingModel} pod spodem — zarówno przy zapisie chunków,
- * jak i przy wyszukiwaniu (embedduje pytanie). Dlatego w ścieżce RAG nie
- * generujemy embeddingów ręcznie (to byłaby zbędna, podwójna praca).
+ * Architectural note: in Spring AI the {@code VectorStore} (ChromaDB here)
+ * calls {@link EmbeddingModel} internally — both when saving chunks and when
+ * searching (it embeds the query). Manual embedding generation in the RAG path
+ * is therefore unnecessary and would duplicate work.
  *
- * Ta klasa udostępnia model embeddingów do celów diagnostycznych — np.
- * sprawdzenia wymiaru wektora, co pozwala wykryć niespójność po zmianie
- * modelu (OpenAI vs Ollama mają różne wymiary).
+ * This class exposes the embedding model for diagnostic purposes — e.g.
+ * checking the vector dimension, which helps detect inconsistencies after a
+ * model switch (OpenAI and Ollama use different dimensions).
  */
 @Service
 public class EmbeddingService {
@@ -25,7 +25,7 @@ public class EmbeddingService {
         this.embeddingModel = embeddingModel;
     }
 
-    /** Wymiar przestrzeni embeddingów aktywnego modelu (np. 1536 dla text-embedding-3-small). */
+    /** Dimension of the active model's embedding space (e.g. 1536 for text-embedding-3-small). */
     public int dimensions() {
         if (cachedDimensions < 0) {
             cachedDimensions = embeddingModel.dimensions();
