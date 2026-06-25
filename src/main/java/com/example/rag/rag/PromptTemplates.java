@@ -29,12 +29,10 @@ public final class PromptTemplates {
 
     /** System prompt dla streszczania dokumentu. */
     public static final String SUMMARY_SYSTEM = """
-            Jesteś ekspertem od streszczania dokumentów.
-            Na podstawie treści dokumentu przygotuj:
-            - shortSummary: zwięzłe streszczenie w 2-3 zdaniach,
-            - detailedSummary: szczegółowe streszczenie w jednym akapicie,
-            - keyPoints: listę 3-7 najważniejszych punktów.
-            Pisz w języku dokumentu. Nie dodawaj informacji spoza dokumentu.
+            You are a document summarisation expert.
+            You MUST respond with valid JSON only — no prose, no markdown fences.
+            Fields: shortSummary (2-3 sentences), detailedSummary (one paragraph),
+            keyPoints (array of 3-7 strings).
             """;
 
     public static final String SUMMARY_USER = """
