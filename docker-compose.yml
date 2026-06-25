@@ -12,7 +12,7 @@ services:
     environment:
       POSTGRES_DB: ragdb
       POSTGRES_USER: rag
-      POSTGRES_PASSWORD: rag
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag}
     ports:
       - "5432:5432"
     volumes:
@@ -24,7 +24,11 @@ services:
       retries: 10
 
   chroma:
-    image: chromadb/chroma:0.5.23
+    # WAŻNE: Spring AI 1.0.0 używa API /api/v2 i oczekuje komunikatu błędu
+    # w formacie Chromy 1.0.x ("Collection [x] does not exists"). Starsze obrazy
+    # (0.5.x/0.6.x) zwracają inny komunikat, przez co auto-utworzenie kolekcji
+    # (initialize-schema) nie działa. Dlatego pinujemy 1.0.x.
+    image: chromadb/chroma:1.0.0
     container_name: rag-chroma
     ports:
       - "8000:8000"
