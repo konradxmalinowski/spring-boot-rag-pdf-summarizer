@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Paths;
 import java.util.List;
 
 /**
@@ -57,8 +58,9 @@ public class DocumentService {
         validate(file);
 
         byte[] bytes = readBytes(file);
+        String safeName = Paths.get(file.getOriginalFilename()).getFileName().toString();
         Document document = documentRepository.save(
-                new Document(file.getOriginalFilename(), bytes.length));
+                new Document(safeName, bytes.length));
 
         try {
             document.markProcessing();
