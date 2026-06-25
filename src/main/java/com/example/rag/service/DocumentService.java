@@ -52,6 +52,7 @@ public class DocumentService {
     }
 
     /** Upload + pełna indeksacja PDF-a. */
+    @Transactional
     public Document uploadAndIndex(MultipartFile file) {
         validate(file);
 
