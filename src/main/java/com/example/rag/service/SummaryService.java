@@ -40,7 +40,12 @@ public class SummaryService {
                     "Dokument nie ma zapisanej treści — zindeksuj go ponownie", null);
         }
         // Efektywnie finalna zmienna do użycia w lambdzie poniżej.
-        String content = text.length() > MAX_CHARS ? text.substring(0, MAX_CHARS) : text;
+        String content;
+        if (text.length() > MAX_CHARS) {
+            content = text.substring(0, MAX_CHARS) + "\n\n[Document truncated at 24,000 characters]";
+        } else {
+            content = text;
+        }
 
         try {
             // .entity() zmusza model do zwrócenia JSON-a pasującego do SummaryResponse.
