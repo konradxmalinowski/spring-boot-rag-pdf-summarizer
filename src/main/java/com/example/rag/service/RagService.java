@@ -59,6 +59,10 @@ public class RagService {
             throw new AiServiceException("Model nie zwrócił odpowiedzi", e);
         }
 
+        if (answer == null || answer.isBlank()) {
+            return new AskResponse("Model did not return a response.", List.of());
+        }
+
         // 5. Zwróć odpowiedź wraz ze źródłami (fragmentami).
         List<String> sources = matches.stream().map(Document::getText).toList();
         return new AskResponse(answer, sources);
