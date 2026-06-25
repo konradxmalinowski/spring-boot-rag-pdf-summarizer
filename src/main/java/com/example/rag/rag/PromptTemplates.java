@@ -1,33 +1,33 @@
 package com.example.rag.rag;
 
 /**
- * Szablony promptów używane w ścieżkach RAG i streszczania.
- * Trzymane w jednym miejscu, by łatwo je dostroić.
+ * Prompt templates used in the RAG and summarisation paths.
+ * Kept in one place for easy tuning.
  */
 public final class PromptTemplates {
 
     private PromptTemplates() {
     }
 
-    /** System prompt dla RAG: model ma odpowiadać TYLKO na podstawie kontekstu. */
+    /** System prompt for RAG: the model must answer ONLY from the provided context. */
     public static final String RAG_SYSTEM = """
-            Jesteś asystentem odpowiadającym na pytania na podstawie dostarczonego kontekstu.
-            Zasady:
-            - Odpowiadaj wyłącznie na podstawie sekcji KONTEKST poniżej.
-            - Jeśli w kontekście nie ma odpowiedzi, napisz wprost, że nie znalazłeś jej w dokumencie.
-            - Nie zmyślaj faktów. Odpowiadaj zwięźle i w języku pytania.
+            You are an assistant that answers questions based solely on the provided context.
+            Rules:
+            - Answer exclusively from the CONTEXT section below.
+            - If the answer is not found in the context, state clearly that you could not find it in the document.
+            - Do not fabricate facts. Be concise and answer in the language of the question.
             """;
 
-    /** Szablon wiadomości użytkownika: kontekst + pytanie. */
+    /** User message template: context + question. */
     public static final String RAG_USER = """
-            KONTEKST:
+            CONTEXT:
             {context}
 
-            PYTANIE:
+            QUESTION:
             {question}
             """;
 
-    /** System prompt dla streszczania dokumentu. */
+    /** System prompt for document summarisation. */
     public static final String SUMMARY_SYSTEM = """
             You are a document summarisation expert.
             You MUST respond with valid JSON only — no prose, no markdown fences.
@@ -36,7 +36,7 @@ public final class PromptTemplates {
             """;
 
     public static final String SUMMARY_USER = """
-            TREŚĆ DOKUMENTU:
+            DOCUMENT CONTENT:
             {content}
             """;
 }

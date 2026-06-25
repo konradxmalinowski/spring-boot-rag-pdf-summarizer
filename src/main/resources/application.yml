@@ -2,35 +2,35 @@ spring:
   application:
     name: spring-ai-rag
 
-  # --- PostgreSQL: metadane dokumentów/chunków ---
+  # --- PostgreSQL: document/chunk metadata ---
   datasource:
     url: jdbc:postgresql://localhost:5432/ragdb
     username: rag
     password: ${DB_PASSWORD:rag}
   jpa:
     hibernate:
-      ddl-auto: update        # tworzy/aktualizuje tabele przy starcie (wygodne na nauce)
+      ddl-auto: update        # creates/updates tables on startup (convenient for development)
     open-in-view: false
     properties:
       hibernate:
         format_sql: false
 
-  # --- Limity uploadu pliku (walidacja rozmiaru już na poziomie kontenera) ---
+  # --- Upload size limits (container-level size validation) ---
   servlet:
     multipart:
       max-file-size: 20MB
       max-request-size: 20MB
 
   ai:
-    # Wybór dostawcy modeli. Na classpath są starter-y OpenAI i Ollama,
-    # więc Spring AI musi wiedzieć, którego użyć. Domyślnie: OpenAI.
-    # Profil 'ollama' nadpisuje te wartości na 'ollama'.
+    # Model provider selection. Both OpenAI and Ollama starters are on the classpath,
+    # so Spring AI must know which one to use. Default: OpenAI.
+    # The 'ollama' profile overrides these values.
     model:
       chat: openai
       embedding: openai
-    # --- Domyślny model: OpenAI (chat + embeddingi) ---
+    # --- Default model: OpenAI (chat + embeddings) ---
     openai:
-      api-key: ${OPENAI_API_KEY}     # ustaw zmienną środowiskową
+      api-key: ${OPENAI_API_KEY}     # set as an environment variable
       chat:
         options:
           model: gpt-4o-mini
@@ -39,23 +39,23 @@ spring:
         options:
           model: text-embedding-3-small
 
-    # --- Główny vector store: ChromaDB ---
+    # --- Primary vector store: ChromaDB ---
     vectorstore:
       chroma:
-        initialize-schema: true       # utwórz kolekcję, jeśli nie istnieje
+        initialize-schema: true       # create the collection if it does not exist
         collection-name: rag_documents
         client:
           host: http://localhost
           port: 8000
 
-# Limity przyjmowanego pliku PDF (walidacja w serwisie)
+# Accepted PDF file limits (validated in the service layer)
 app:
   upload:
     max-file-size-bytes: 20971520     # 20 MB
     allowed-content-type: application/pdf
   rag:
-    top-k: 4                          # ile chunków pobieramy do kontekstu
-    similarity-threshold: 0.0         # 0 = bez progu (Chroma zwraca top-k)
+    top-k: 4                          # number of chunks fetched into context
+    similarity-threshold: 0.0         # 0 = no threshold (Chroma returns top-k)
 
 server:
   port: 8080

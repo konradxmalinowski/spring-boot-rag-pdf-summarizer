@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Jednolity format błędu zwracany przez GlobalExceptionHandler.
+ * Uniform error response format returned by GlobalExceptionHandler.
  */
 public record ApiError(
         Instant timestamp,

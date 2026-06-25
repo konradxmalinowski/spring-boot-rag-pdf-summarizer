@@ -19,7 +19,7 @@ public class ChatController {
         this.ragService = ragService;
     }
 
-    /** RAG search: zadaj pytanie do zaindeksowanych dokumentów. */
+    /** RAG search: ask a question against the indexed documents. */
     @PostMapping("/ask")
     public AskResponse ask(@Valid @RequestBody AskRequest request) {
         return ragService.ask(request);

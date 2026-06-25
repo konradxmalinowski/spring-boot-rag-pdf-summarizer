@@ -1,11 +1,11 @@
 package com.example.rag.exception;
 
 /**
- * Rzucany, gdy dokument o podanym ID nie istnieje -> 404.
+ * Thrown when no document exists for the given ID -> maps to 404.
  */
 public class DocumentNotFoundException extends RuntimeException {
 
     public DocumentNotFoundException(Long id) {
-        super("Nie znaleziono dokumentu o id=" + id);
+        super("Document not found for id=" + id);
     }
 }

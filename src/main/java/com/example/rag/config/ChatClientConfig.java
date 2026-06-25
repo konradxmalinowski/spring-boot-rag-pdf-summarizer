@@ -5,11 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Buduje pojedynczy {@link ChatClient} z auto-skonfigurowanego buildera.
+ * Builds a single {@link ChatClient} from the auto-configured builder.
  *
- * Dzięki temu serwisy zależą od ChatClient (abstrakcja), a nie od konkretnego
- * modelu. Zmiana OpenAI -> Ollama odbywa się przez profil/konfigurację, bez
- * dotykania kodu (zob. application-ollama.yml).
+ * Services depend on the ChatClient abstraction rather than a concrete model.
+ * Switching from OpenAI to Ollama is done via profile/configuration without
+ * touching the code (see application-ollama.yml).
  */
 @Configuration
 public class ChatClientConfig {

@@ -10,16 +10,15 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 /**
- * Generuje streszczenie dokumentu (krótkie, szczegółowe, punkty kluczowe).
+ * Generates a document summary (short, detailed, and key points).
  *
- * Korzysta z surowego tekstu zapisanego przy indeksacji, więc nie wymaga
- * ponownego odczytu PDF-a. Tekst jest przycinany do limitu, by zmieścić się
- * w oknie kontekstu modelu.
+ * Uses the raw text stored at indexing time, so no PDF re-read is needed.
+ * The text is truncated to a safe limit to stay within the model's context window.
  */
 @Service
 public class SummaryService {
 
-    /** Bezpieczny limit znaków wysyłanych do modelu (proste zabezpieczenie kontekstu). */
+    /** Maximum characters sent to the model — a simple context-window guard. */
     private static final int MAX_CHARS = 24_000;
 
     private final DocumentRepository documentRepository;
@@ -37,9 +36,9 @@ public class SummaryService {
         String text = document.getExtractedText();
         if (text == null || text.isBlank()) {
             throw new AiServiceException(
-                    "Dokument nie ma zapisanej treści — zindeksuj go ponownie", null);
+                    "Document has no stored text — please re-index it", null);
         }
-        // Efektywnie finalna zmienna do użycia w lambdzie poniżej.
+        // Effectively-final variable for use in the lambda below.
         String content;
         if (text.length() > MAX_CHARS) {
             content = text.substring(0, MAX_CHARS) + "\n\n[Document truncated at 24,000 characters]";
@@ -48,14 +47,14 @@ public class SummaryService {
         }
 
         try {
-            // .entity() zmusza model do zwrócenia JSON-a pasującego do SummaryResponse.
+            // .entity() instructs the model to return JSON matching SummaryResponse.
             return chatClient.prompt()
                     .system(PromptTemplates.SUMMARY_SYSTEM)
                     .user(u -> u.text(PromptTemplates.SUMMARY_USER).param("content", content))
                     .call()
                     .entity(SummaryResponse.class);
         } catch (Exception e) {
-            throw new AiServiceException("Nie udało się wygenerować streszczenia", e);
+            throw new AiServiceException("Failed to generate document summary", e);
         }
     }
 }

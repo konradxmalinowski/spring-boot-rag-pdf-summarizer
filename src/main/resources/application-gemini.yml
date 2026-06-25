@@ -1,30 +1,32 @@
-# Profil 'gemini' — używa Google Gemini przez jego endpoint zgodny z OpenAI.
-# Uruchom: SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
+# Profile 'gemini' — uses Google Gemini via its OpenAI-compatible endpoint.
+# Run with: SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
 #
-# Klucz pobierz z Google AI Studio (https://aistudio.google.com/apikey):
+# Get your key from Google AI Studio (https://aistudio.google.com/apikey):
 #   export GEMINI_API_KEY=...
 #
-# Trik: Gemini wystawia API kompatybilne z OpenAI, więc nie potrzebujemy nowej
-# zależności — reużywamy startera OpenAI, zmieniając tylko base-url i ścieżki.
-# Dlatego spring.ai.model.chat/embedding pozostają 'openai' (z application.yml).
+# Trick: Gemini exposes an OpenAI-compatible API, so no new dependency is needed —
+# we reuse the OpenAI starter and only change base-url and paths.
+# Therefore spring.ai.model.chat/embedding stay 'openai' (set in application.yml).
 #
-# UWAGA: embeddingi Gemini mają INNY wymiar niż OpenAI (text-embedding-004 = 768,
-# OpenAI text-embedding-3-small = 1536). Po przełączeniu modelu PRZEINDEKSUJ
-# dokumenty (POST /api/documents/{id}/reindex) — inaczej similarity search padnie
-# na niezgodności wymiarów. Sprawdź aktywny wymiar przez GET /api/documents/stats.
+# NOTE: Gemini embeddings have a DIFFERENT dimension than OpenAI (gemini-embedding-001 = 3072,
+# OpenAI text-embedding-3-small = 1536). After switching models, REINDEX your
+# documents (POST /api/documents/{id}/reindex) — otherwise similarity search will
+# fail on dimension mismatch. Check the active dimension via GET /api/documents/stats.
 spring:
   ai:
     openai:
       api-key: ${GEMINI_API_KEY}
       base-url: https://generativelanguage.googleapis.com
       chat:
-        # pełny URL: .../v1beta/openai/chat/completions
+        # full URL: .../v1beta/openai/chat/completions
         completions-path: /v1beta/openai/chat/completions
         options:
           model: gemini-2.0-flash
           temperature: 0.2
       embedding:
-        # pełny URL: .../v1beta/openai/embeddings
+        # full URL: .../v1beta/openai/embeddings
         embeddings-path: /v1beta/openai/embeddings
         options:
-          model: text-embedding-004
+          # gemini-embedding-001 is the current GA model (text-embedding-004 is not
+          # served by the OpenAI-compatible layer — returns 404 embedContent).
+          model: gemini-embedding-001

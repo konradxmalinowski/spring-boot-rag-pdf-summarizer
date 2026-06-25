@@ -11,54 +11,54 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.util.List;
 
 /**
- * Centralna obsługa wyjątków -> spójny format ApiError + poprawne statusy HTTP.
+ * Centralised exception handling -> consistent ApiError format with correct HTTP statuses.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /** Błędy walidacji body (@Valid) -> 400 z listą pól. */
+    /** Validation errors (@Valid on request body) -> 400 with a list of field errors. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .toList();
-        return build(HttpStatus.BAD_REQUEST, "Błąd walidacji", details);
+        return build(HttpStatus.BAD_REQUEST, "Validation error", details);
     }
 
-    /** Nieprawidłowy plik (pusty, zły typ, za duży) -> 400. */
+    /** Invalid file (empty, wrong type, too large) -> 400. */
     @ExceptionHandler(InvalidFileException.class)
     public ResponseEntity<ApiError> handleInvalidFile(InvalidFileException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), List.of());
     }
 
-    /** Przekroczony limit rozmiaru uploadu (Spring/servlet) -> 413. */
+    /** Upload size limit exceeded (Spring/servlet) -> 413. */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTooLarge(MaxUploadSizeExceededException ex) {
-        return build(HttpStatus.PAYLOAD_TOO_LARGE, "Plik przekracza dozwolony rozmiar", List.of());
+        return build(HttpStatus.PAYLOAD_TOO_LARGE, "File exceeds the maximum allowed size", List.of());
     }
 
-    /** Brak dokumentu -> 404. */
+    /** Document not found -> 404. */
     @ExceptionHandler(DocumentNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(DocumentNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage(), List.of());
     }
 
-    /** Błąd przetwarzania PDF (np. skan bez tekstu) -> 422. */
+    /** PDF processing error (e.g. scanned image without text layer) -> 422. */
     @ExceptionHandler(PdfProcessingException.class)
     public ResponseEntity<ApiError> handlePdf(PdfProcessingException ex) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), List.of());
     }
 
-    /** Błąd modelu AI lub vector store -> 502. */
+    /** AI model or vector store error -> 502. */
     @ExceptionHandler(AiServiceException.class)
     public ResponseEntity<ApiError> handleAi(AiServiceException ex) {
         return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), List.of());
     }
 
-    /** Wszystko inne -> 500 (bez wycieku szczegółów). */
+    /** Catch-all -> 500 (no internal details leaked to the client). */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleOther(Exception ex) {
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, "Wystąpił nieoczekiwany błąd", List.of());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", List.of());
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message, List<String> details) {

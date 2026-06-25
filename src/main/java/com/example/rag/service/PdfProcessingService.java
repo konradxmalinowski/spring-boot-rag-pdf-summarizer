@@ -10,17 +10,17 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Odpowiada za odczyt treści PDF i podział na chunki.
- * Nie dotyka bazy ani AI — to czysta transformacja tekstu.
+ * Responsible for reading PDF content and splitting it into chunks.
+ * Has no database or AI dependencies — pure text transformation.
  */
 @Service
 public class PdfProcessingService {
 
-    /** Wynik przetworzenia PDF: pełny tekst + gotowe chunki. */
+    /** Result of processing a PDF: full text plus ready-to-index chunks. */
     public record PdfContent(String fullText, List<String> chunks) {
     }
 
-    /** Odczyt PDF z surowych bajtów + chunking. */
+    /** Reads a PDF from raw bytes and splits it into chunks. */
     public PdfContent process(byte[] pdfBytes) {
         List<Document> pages = readPages(pdfBytes);
 
@@ -30,14 +30,14 @@ public class PdfProcessingService {
 
         if (fullText == null || fullText.isBlank()) {
             throw new PdfProcessingException(
-                    "PDF nie zawiera tekstu (możliwe, że to skan/obraz)", null);
+                    "PDF contains no extractable text (possibly a scanned image)", null);
         }
 
         List<String> chunks = chunk(fullText);
         return new PdfContent(fullText, chunks);
     }
 
-    /** Dzieli gotowy tekst na chunki — używane też przy reindeksacji. */
+    /** Splits text into chunks — also used during re-indexing. */
     public List<String> chunk(String text) {
         List<Document> split = new TokenTextSplitter().split(List.of(new Document(text)));
         return split.stream().map(Document::getText).toList();
@@ -48,7 +48,7 @@ public class PdfProcessingService {
             PagePdfDocumentReader reader = new PagePdfDocumentReader(new ByteArrayResource(pdfBytes));
             return reader.read();
         } catch (Exception e) {
-            throw new PdfProcessingException("Nie udało się odczytać pliku PDF", e);
+            throw new PdfProcessingException("Failed to read the PDF file", e);
         }
     }
 }

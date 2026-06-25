@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 /**
- * Realizuje ścieżkę RAG: retrieve (Chroma) -> augment (kontekst) -> generate (LLM).
+ * Implements the RAG path: retrieve (Chroma) -> augment (context) -> generate (LLM).
  */
 @Service
 public class RagService {
@@ -31,21 +31,20 @@ public class RagService {
     }
 
     public AskResponse ask(AskRequest request) {
-        // 1-2. Embedding pytania + similarity search robi ChromaService (VectorStore).
+        // Steps 1-2: question embedding + similarity search are handled by ChromaService (VectorStore).
         List<Document> matches = chromaService.search(request.question(), topK, request.documentId());
 
         if (matches.isEmpty()) {
             return new AskResponse(
-                    "Nie znalazłem odpowiedzi w zaindeksowanych dokumentach.",
+                    "No answer found in the indexed documents.",
                     List.of());
         }
 
-        // 3. Zbuduj kontekst z najbardziej pasujących chunków.
+        // Step 3: build context from the most relevant chunks.
         String context = matches.stream()
                 .map(Document::getText)
                 .reduce("", (a, b) -> a.isBlank() ? b : a + "\n---\n" + b);
 
-        // 4. Wyślij prompt do modelu.
         String answer;
         try {
             answer = chatClient.prompt()
@@ -56,14 +55,13 @@ public class RagService {
                     .call()
                     .content();
         } catch (Exception e) {
-            throw new AiServiceException("Model nie zwrócił odpowiedzi", e);
+            throw new AiServiceException("Model did not return a response", e);
         }
 
         if (answer == null || answer.isBlank()) {
             return new AskResponse("Model did not return a response.", List.of());
         }
 
-        // 5. Zwróć odpowiedź wraz ze źródłami (fragmentami).
         List<String> sources = matches.stream().map(Document::getText).toList();
         return new AskResponse(answer, sources);
     }

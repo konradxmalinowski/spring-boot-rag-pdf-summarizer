@@ -1,7 +1,7 @@
 package com.example.rag.exception;
 
 /**
- * Rzucany przy nieprawidłowym pliku (zły typ, pusty, za duży) -> 400.
+ * Thrown for invalid file uploads (wrong type, empty, or too large) -> maps to 400.
  */
 public class InvalidFileException extends RuntimeException {
 

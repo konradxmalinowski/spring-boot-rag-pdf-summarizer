@@ -18,9 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Metadane wgranego dokumentu PDF.
- * Sama treść/embeddingi NIE są tu trzymane — to robi ChromaDB.
- * Tu trzymamy tylko informacje potrzebne do listowania, statusu i reindeksacji.
+ * Metadata for an uploaded PDF document.
+ * Content and embeddings are NOT stored here — that is ChromaDB's responsibility.
+ * Only the data needed for listing, status tracking, and re-indexing is kept here.
  */
 @Entity
 @Table(name = "documents")
@@ -40,11 +40,11 @@ public class Document {
     @Column(nullable = false)
     private DocumentStatus status;
 
-    /** Liczba chunków zapisanych w ChromaDB dla tego dokumentu. */
+    /** Number of chunks stored in ChromaDB for this document. */
     @Column(nullable = false)
     private int chunkCount;
 
-    /** Wypełniane gdy status = FAILED. */
+    /** Populated when status = FAILED. */
     @Column(length = 1000)
     private String errorMessage;
 
@@ -55,8 +55,8 @@ public class Document {
     private Instant updatedAt;
 
     /**
-     * Surowy tekst PDF — trzymamy go, by móc streszczać i reindeksować
-     * bez konieczności ponownego uploadu pliku.
+     * Raw PDF text — retained so the document can be summarised and re-indexed
+     * without requiring the user to re-upload the file.
      */
     @Column(columnDefinition = "text")
     private String extractedText;
@@ -65,7 +65,7 @@ public class Document {
     private List<DocumentChunk> chunks = new ArrayList<>();
 
     protected Document() {
-        // wymagane przez JPA
+        // required by JPA
     }
 
     public Document(String filename, long fileSizeBytes) {
@@ -77,7 +77,7 @@ public class Document {
         this.updatedAt = this.createdAt;
     }
 
-    /** Oznacz dokument jako poprawnie zaindeksowany. */
+    /** Marks the document as successfully indexed. */
     public void markIndexed(int chunkCount, String extractedText) {
         this.status = DocumentStatus.INDEXED;
         this.chunkCount = chunkCount;

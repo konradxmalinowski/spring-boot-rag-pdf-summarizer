@@ -3,8 +3,8 @@ package com.example.rag.dto;
 import java.util.List;
 
 /**
- * Odpowiedź RAG: wygenerowana odpowiedź modelu plus źródła (fragmenty),
- * z których model korzystał — przydatne do weryfikacji.
+ * RAG response: the model-generated answer plus the source chunks used —
+ * useful for verification.
  */
 public record AskResponse(
         String answer,
