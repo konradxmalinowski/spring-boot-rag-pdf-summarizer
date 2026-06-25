@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 public class EmbeddingService {
 
     private final EmbeddingModel embeddingModel;
+    private volatile int cachedDimensions = -1;
 
     public EmbeddingService(EmbeddingModel embeddingModel) {
         this.embeddingModel = embeddingModel;
@@ -26,6 +27,9 @@ public class EmbeddingService {
 
     /** Wymiar przestrzeni embeddingów aktywnego modelu (np. 1536 dla text-embedding-3-small). */
     public int dimensions() {
-        return embeddingModel.dimensions();
+        if (cachedDimensions < 0) {
+            cachedDimensions = embeddingModel.dimensions();
+        }
+        return cachedDimensions;
     }
 }
