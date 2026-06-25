@@ -6,7 +6,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/ragdb
     username: rag
-    password: rag
+    password: ${DB_PASSWORD:rag}
   jpa:
     hibernate:
       ddl-auto: update        # tworzy/aktualizuje tabele przy starcie (wygodne na nauce)
